@@ -107,6 +107,16 @@ jobs:
           mkdir -p zap-reports
           chmod 777 zap-reports
 
+      - name: Verify CSP Header
+        run: |
+          set -o pipefail
+          for path in / /login/ /register; do
+            echo "Checking endpoint: $path"
+            curl -fsS -D - -o /dev/null \
+              "http://127.0.0.1:8000$path" \
+              | grep -i "^Content-Security-Policy:"
+          done
+
       - name: Run ZAP Baseline Scan
         run: |
           docker run --rm --network host \
