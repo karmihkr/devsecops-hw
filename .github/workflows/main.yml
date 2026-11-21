@@ -85,6 +85,10 @@ jobs:
       - name: Initialize database
         run: |
           docker exec pygoat python manage.py migrate --noinput
+          
+      - name: Initialize database
+        run: |
+          docker exec pygoat python manage.py migrate --noinput
 
       - name: Wait for application
         run: |
@@ -123,3 +127,10 @@ jobs:
       - name: Stop PyGoat
         if: always()
         run: docker rm -f pygoat || true
+
+      - name: Check application status
+        run: |
+          curl -sSL -o /dev/null \
+            -w "Login HTTP status: %{http_code}\n" \
+            http://127.0.0.1:8000/login/
+          docker logs --tail 50 pygoat
