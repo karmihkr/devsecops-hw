@@ -58,3 +58,57 @@ jobs:
         with:
           name: docker-scout-findings
           path: scout-report.sarif
+
+  dast_scan:
+    name: Run OWASP ZAP Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build PyGoat
+        run: docker build -t pygoat-lab:latest .
+
+      - name: Deploy PyGoat
+        run: |
+          docker run -d --name pygoat \
+            -p 8000:8000 pygoat-lab:latest
+
+      - name: Wait for application
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8000/ > /dev/null; then
+              echo "PyGoat is ready"
+              exit 0
+            fi
+            sleep 5
+          done
+          docker logs pygoat
+          exit 1
+
+      - name: Prepare report directory
+        run: |
+          mkdir -p zap-reports
+          chmod 777 zap-reports
+
+      - name: Run ZAP Baseline Scan
+        run: |
+          docker run --rm --network host \
+            -v "${{ github.workspace }}/zap-reports:/zap/wrk/:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t http://127.0.0.1:8000 \
+            -r zap-report.html \
+            -J zap-report.json
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-findings
+          path: zap-reports/
+
+      - name: Stop PyGoat
+        if: always()
+        run: docker rm -f pygoat || true
