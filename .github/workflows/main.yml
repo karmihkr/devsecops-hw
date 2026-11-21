@@ -1,4 +1,5 @@
 
+
 name: CI
 
 on: [push, workflow_dispatch]
@@ -81,10 +82,14 @@ jobs:
           docker run -d --name pygoat \
             -p 8000:8000 pygoat-lab:latest
 
+      - name: Initialize database
+        run: |
+          docker exec pygoat python manage.py migrate --noinput
+
       - name: Wait for application
         run: |
           for i in {1..30}; do
-            if curl -fsS http://localhost:8000/ > /dev/null; then
+            if curl -fsSL http://127.0.0.1:8000/login/ > /dev/null; then
               echo "PyGoat is ready"
               exit 0
             fi
